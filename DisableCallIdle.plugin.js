@@ -1,6 +1,7 @@
 /**
  * @name DisableCallIdle
- * @author lolo & Grok-Ai
+ * @author lolo
+ * @authorId 687406069475049478
  * @description Disables automatic DM call disconnects after 5 mins
  * @source https://github.com/lolootp/DisableCallIdle/blob/main/DisableCallIdle.plugin.js
  * @version 1.0.0
