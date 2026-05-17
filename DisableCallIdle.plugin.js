@@ -4,52 +4,56 @@
  * @authorId 687406069475049478
  * @description Disables automatic DM call disconnects after 5 mins
  * @source https://github.com/lolootp/DisableCallIdle/blob/main/DisableCallIdle.plugin.js
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 module.exports = class DisableCallIdle {
     start() {
-        const { Patcher, Webpack } = BdApi;
+        const Webpack = BdApi.Webpack;
+        const Patcher = BdApi.Patcher;
 
-        try {
+        console.log("[DisableCallIdle] Starting...");
 
-            const idleHandler = Webpack.getModule(m => 
-                String(m).includes("handleIdleUpdate") || 
-                (m?.prototype && typeof m.prototype.handleIdleUpdate === "function")
-            );
+        // Improved finder for newer Discord versions
+        this.module = Webpack.getModule(m =>
+            m?.prototype?.handleIdleUpdate ||
+            m?.handleIdleUpdate ||
+            String(m).includes("handleIdleUpdate") ||
+            String(m).includes("idleTimeout")
+        );
 
-            if (idleHandler) {
-                const target = idleHandler.prototype || idleHandler;
-                if (typeof target.handleIdleUpdate === "function") {
-                    Patcher.instead("DisableCallIdle", target, "handleIdleUpdate", () => {});
-                }
-            }
-
-
-            const timeoutModules = Webpack.getModules(m => 
-                String(m).includes("idleTimeout")
-            );
-
-            timeoutModules.forEach(mod => {
-                if (mod?.idleTimeout) {
-                    mod.idleTimeout.start = () => {};
-                    mod.idleTimeout.stop = () => {};
-                }
-            });
-
-
-            const allModules = Webpack.getModules(m => 
-                typeof m === "function" || typeof m === "object"
-            ).filter(m => 
-                String(m).toLowerCase().includes("idle")
-            );
-
-        } catch (err) {
-
+        if (!this.module) {
+            console.error("[DisableCallIdle] Failed to find idle module. Discord updated again.");
+            return;
         }
+
+        console.log("[DisableCallIdle] Module found!");
+
+        const proto = this.module.prototype || this.module;
+
+        // Main patch
+        if (typeof proto.handleIdleUpdate === "function") {
+            Patcher.instead(
+                "DisableCallIdle",
+                proto,
+                "handleIdleUpdate",
+                () => {}
+            );
+            console.log("[DisableCallIdle] ✓ Patched handleIdleUpdate");
+        }
+
+        // Backup timeout patch
+        if (proto.idleTimeout) {
+            proto.idleTimeout.start = () => {};
+            proto.idleTimeout.stop = () => {};
+            console.log("[DisableCallIdle] ✓ Patched idleTimeout");
+        }
+
+        console.log("[DisableCallIdle] Plugin enabled successfully.");
     }
 
     stop() {
         BdApi.Patcher.unpatchAll("DisableCallIdle");
+        console.log("[DisableCallIdle] Plugin disabled.");
     }
 };
